@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { create } from "zustand";
 
 function isOneOf<T extends readonly string[]>(
@@ -27,6 +27,13 @@ interface Student {
   enrollmentDate: string;
 }
 
+interface PaginationState<T> {
+  items: T[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+}
+
 interface FilterState {
   search: string;
   department: Department | "All";
@@ -34,6 +41,13 @@ interface FilterState {
   sortOrder: "asc" | "desc";
   page: number;
 }
+
+const HistoryAction = {
+  PUSH: "push",
+  REPLACE: "replace",
+} as const;
+
+type THistoryAction = (typeof HistoryAction)[keyof typeof HistoryAction];
 
 const ITEMS_PER_PAGE = 5;
 
@@ -330,52 +344,125 @@ function getFiltersFromURL(): FilterState {
   };
 }
 
+// function setURLFromFilters(
+//   filters: FilterState,
+//   actionType: THistoryAction = HistoryAction.PUSH,
+// ) {
+//   const params = new URLSearchParams();
+
+//   // Clean URL preservation optimization: Omits defaults
+//   if (filters.search) params.set("search", filters.search);
+//   if (filters.department !== "All")
+//     params.set("department", filters.department);
+//   if (filters.sortBy !== DEFAULT_FILTERS.sortBy)
+//     params.set("sortBy", filters.sortBy);
+//   if (filters.sortOrder !== DEFAULT_FILTERS.sortOrder)
+//     params.set("sortOrder", filters.sortOrder);
+//   if (filters.page > 1) params.set("page", filters.page.toString());
+
+//   const queryString = params.toString();
+//   const newUrl = queryString
+//     ? `${window.location.pathname}?${queryString}`
+//     : window.location.pathname;
+
+//   // Guard clause against pushing duplicate entries to history array
+//   if (
+//     window.location.search === `?${queryString}` ||
+//     (window.location.search === "" && !queryString)
+//   ) {
+//     return;
+//   }
+
+//   if (actionType === HistoryAction.PUSH) {
+//     window.history.pushState({ ...filters }, "", newUrl);
+//   } else {
+//     window.history.replaceState({ ...filters }, "", newUrl);
+//   }
+// }
+
 function setURLFromFilters(
   filters: FilterState,
-  actionType: "push" | "replace" = "push",
+  actionType: THistoryAction = HistoryAction.PUSH,
 ) {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams(window.location.search);
 
-  // Clean URL preservation optimization: Omits defaults
-  if (filters.search) params.set("search", filters.search);
-  if (filters.department !== "All")
-    params.set("department", filters.department);
-  if (filters.sortBy !== DEFAULT_FILTERS.sortBy)
-    params.set("sortBy", filters.sortBy);
-  if (filters.sortOrder !== DEFAULT_FILTERS.sortOrder)
-    params.set("sortOrder", filters.sortOrder);
-  if (filters.page > 1) params.set("page", filters.page.toString());
+  updateURLParam(params, "search", filters.search);
+  updateURLParam(
+    params,
+    "department",
+    filters.department === "All" ? "" : filters.department,
+  );
+  updateURLParam(
+    params,
+    "sortBy",
+    filters.sortBy === DEFAULT_FILTERS.sortBy ? "" : filters.sortBy,
+  );
+  updateURLParam(
+    params,
+    "sortOrder",
+    filters.sortOrder === DEFAULT_FILTERS.sortOrder
+      ? ""
+      : filters.sortOrder,
+  );
+  updateURLParam(
+    params,
+    "page",
+    filters.page > 1 ? String(filters.page) : "",
+  );
 
   const queryString = params.toString();
+
   const newUrl = queryString
     ? `${window.location.pathname}?${queryString}`
     : window.location.pathname;
 
-  // Guard clause against pushing duplicate entries to history array
-  if (
-    window.location.search === `?${queryString}` ||
-    (window.location.search === "" && !queryString)
-  ) {
+  if (window.location.search === (queryString ? `?${queryString}` : "")) {
     return;
   }
 
-  if (actionType === "push") {
+  if (actionType === HistoryAction.PUSH) {
     window.history.pushState({ ...filters }, "", newUrl);
   } else {
     window.history.replaceState({ ...filters }, "", newUrl);
   }
 }
 
+function paginate<T>(
+  data: T[],
+  page: number,
+  pageSize: number,
+): PaginationState<T> {
+  if (pageSize <= 0) {
+    throw new Error("pageSize must be greater than 0");
+  }
+
+  const totalItems = data.length;
+
+  const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1);
+
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+
+  const start = (currentPage - 1) * pageSize;
+
+  return {
+    items: data.slice(start, start + pageSize),
+    totalItems,
+    totalPages,
+    currentPage,
+  };
+}
+
 // ==========================================
 // 3. ZUSTAND APPLICATION STORE
 // ==========================================
+
 interface StudentStore {
   filters: FilterState;
   setFilters: (
     updater:
       | Partial<FilterState>
       | ((prev: FilterState) => Partial<FilterState>),
-    historyAction?: "push" | "replace",
+    historyAction?: THistoryAction,
   ) => void;
   resetFilters: () => void;
   syncFromURL: () => void;
@@ -384,7 +471,7 @@ interface StudentStore {
 const useStudentStore = create<StudentStore>((set) => ({
   filters: getFiltersFromURL(),
 
-  setFilters: (updater, historyAction = "push") =>
+  setFilters: (updater, historyAction = HistoryAction.PUSH) =>
     set((state) => {
       const nextChanges =
         typeof updater === "function" ? updater(state.filters) : updater;
@@ -400,7 +487,7 @@ const useStudentStore = create<StudentStore>((set) => ({
     }),
 
   resetFilters: () => {
-    setURLFromFilters(DEFAULT_FILTERS, "push");
+    setURLFromFilters(DEFAULT_FILTERS, HistoryAction.PUSH);
     set({ filters: DEFAULT_FILTERS });
   },
 
@@ -424,12 +511,23 @@ function useDebounce<T>(value: T, delay: number) {
   return debounced;
 }
 
+interface UsePaginationOptions {
+  page: number;
+  pageSize: number;
+}
+
+function usePagination<T>(data: T[], { page, pageSize }: UsePaginationOptions) {
+  return useMemo(() => paginate(data, page, pageSize), [data, page, pageSize]);
+}
+
 // ==========================================
 // 4. MAIN USER INTERFACE COMPONENT
 // ==========================================
-export function App() {
+export function Three() {
   const { filters, setFilters, resetFilters, syncFromURL } = useStudentStore();
   const [localSearch, setLocalSearch] = useState(filters.search);
+
+  const isSyncingFromHistoryRef = useRef(false);
 
   const debouncedSearch = useDebounce(localSearch, 500);
 
@@ -437,6 +535,8 @@ export function App() {
   useEffect(() => {
     const handlePopState = () => {
       console.log("handlePopState ..........");
+      isSyncingFromHistoryRef.current = true;
+
       syncFromURL();
 
       const filters = getFiltersFromURL();
@@ -450,15 +550,23 @@ export function App() {
   }, [syncFromURL]);
 
   useEffect(() => {
-    if (debouncedSearch !== filters.search) {
-      setFilters(
-        {
-          search: debouncedSearch,
-        },
-        "replace",
-      );
+    if (debouncedSearch === filters.search) {
+      return;
     }
+
+    if (isSyncingFromHistoryRef.current) {
+      isSyncingFromHistoryRef.current = false;
+      return;
+    }
+
+    setFilters(
+      {
+        search: debouncedSearch,
+      },
+      HistoryAction.PUSH,
+    );
   }, [debouncedSearch, filters.search, setFilters]);
+
   // Data Pipeline Engine: Filter -> Sort
   const filteredAndSortedStudents = useMemo(() => {
     let result = [...DUMMY_STUDENTS];
@@ -493,15 +601,16 @@ export function App() {
     return result;
   }, [filters.search, filters.department, filters.sortBy, filters.sortOrder]);
 
-  const totalItems = filteredAndSortedStudents.length;
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-  const safePage = filters.page > totalPages ? totalPages : filters.page;
+  const {
+    items: paginatedStudents,
+    totalItems,
+    totalPages,
+    currentPage: safePage,
+  } = usePagination(filteredAndSortedStudents, {
+    page: filters.page,
+    pageSize: ITEMS_PER_PAGE,
+  });
 
-  const paginatedStudents = useMemo(() => {
-    const start = (safePage - 1) * ITEMS_PER_PAGE;
-    return filteredAndSortedStudents.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredAndSortedStudents, safePage]);
-w
   const handleSort = (field: typeof filters.sortBy) => {
     setFilters(
       (prev) => ({
@@ -509,7 +618,7 @@ w
         sortOrder:
           prev.sortBy === field && prev.sortOrder === "asc" ? "desc" : "asc",
       }),
-      "push",
+      HistoryAction.PUSH,
     ); // Push sorting state to history
   };
 
@@ -559,7 +668,7 @@ w
               onChange={(e) =>
                 setFilters(
                   { department: e.target.value as Department | "All" },
-                  "push",
+                  HistoryAction.PUSH,
                 )
               }
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -658,7 +767,9 @@ w
             <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
               <button
                 disabled={safePage === 1}
-                onClick={() => setFilters({ page: safePage - 1 }, "push")}
+                onClick={() =>
+                  setFilters({ page: safePage - 1 }, HistoryAction.PUSH)
+                }
                 className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md shadow-sm text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Previous
@@ -669,7 +780,9 @@ w
                   (pageNum) => (
                     <button
                       key={pageNum}
-                      onClick={() => setFilters({ page: pageNum }, "push")}
+                      onClick={() =>
+                        setFilters({ page: pageNum }, HistoryAction.PUSH)
+                      }
                       className={`h-8 w-8 text-xs font-bold rounded-md transition-all ${
                         safePage === pageNum
                           ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
@@ -684,7 +797,9 @@ w
 
               <button
                 disabled={safePage === totalPages}
-                onClick={() => setFilters({ page: safePage + 1 }, "push")}
+                onClick={() =>
+                  setFilters({ page: safePage + 1 }, HistoryAction.PUSH)
+                }
                 className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-md shadow-sm text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Next
@@ -697,4 +812,18 @@ w
   );
 }
 
-export default App;
+export default Three;
+
+
+function updateURLParam(
+  params: URLSearchParams,
+  key: string,
+  value: string,
+) {
+  if (!value) {
+    params.delete(key);
+    return;
+  }
+
+  params.set(key, value);
+}

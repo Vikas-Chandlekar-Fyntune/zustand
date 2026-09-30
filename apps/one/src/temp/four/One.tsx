@@ -27,22 +27,22 @@ const useStore = create<Store>((set) => ({
 
 function Counter(): React.JSX.Element {
   // PROBLEM : Maximum update depth exceeded
-  //   const { count, user } = useStore((state) => ({
-  //     count: state.count,
-  //     user: state.user,
-  //   }));
+  // const { count, user } = useStore((state) => ({
+  //   count: state.count,
+  //   user: state.user,
+  // }));
 
   // SOLUTION 1
-  //   const { count, user } = useStore(
-  //     useShallow((state) => ({
-  //       count: state.count,
-  //       user: state.user,
-  //     })),
-  //   );
+  // const { count, user } = useStore(
+  //   useShallow((state) => ({
+  //     count: state.count,
+  //     user: state.user,
+  //   })),
+  // );
 
   // SOLUTION 2
-  //   const count = useStore((state) => state.count);
-  //   const user = useStore((state) => state.user);
+  // const count = useStore((state) => state.count);
+  // const user = useStore((state) => state.user);
 
   // SOLUTION 3
   const [count, user] = useStore(

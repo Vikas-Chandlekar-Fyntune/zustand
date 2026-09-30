@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
+import { enableMapSet } from "immer";
+
+// NOTE: Enabling Map and Set plugins for Immer
+enableMapSet();
 
 interface User {
   id: number;
@@ -17,71 +22,76 @@ interface SelectedStore {
 
 const useSelectedStore = create<SelectedStore>()(
   devtools(
-    (set) => ({
-      selectedIds: new Set(),
+    persist(
+      immer((set) => ({
+        selectedIds: new Set<number>(),
 
-      add: (id) =>
-        set(
-          (state) => {
-            const selectedIds = new Set(state.selectedIds);
+        add: (id) =>
+          set(
+            (state) => {
+              // Immer allows direct mutation syntax
+              state.selectedIds.add(id);
+            },
+            false,
+            "selected/add",
+          ),
 
-            selectedIds.add(id);
+        remove: (id) =>
+          set(
+            (state) => {
+              state.selectedIds.delete(id);
+            },
+            false,
+            "selected/remove",
+          ),
 
-            return { selectedIds };
-          },
-          false,
-          "selected/add",
-        ),
+        toggle: (id) =>
+          set(
+            (state) => {
+              if (state.selectedIds.has(id)) {
+                state.selectedIds.delete(id);
+              } else {
+                state.selectedIds.add(id);
+              }
+            },
+            false,
+            "selected/toggle",
+          ),
 
-      remove: (id) =>
-        set(
-          (state) => {
-            const selectedIds = new Set(state.selectedIds);
-
-            selectedIds.delete(id);
-
-            return { selectedIds };
-          },
-          false,
-          "selected/remove",
-        ),
-
-      toggle: (id) =>
-        set(
-          (state) => {
-            const selectedIds = new Set(state.selectedIds);
-
-            if (selectedIds.has(id)) {
-              selectedIds.delete(id);
-            } else {
-              selectedIds.add(id);
+        clear: () =>
+          set(
+            (state) => {
+              state.selectedIds.clear();
+            },
+            false,
+            "selected/clear",
+          ),
+      })),
+      {
+        name: "selected-store-storage", // Key used in storage
+        storage: createJSONStorage(() => sessionStorage, {
+          // Serialize Set to Array when saving to storage
+          replacer: (key, value) => {
+            if (value instanceof Set) {
+              return { __type: "Set", value: Array.from(value) };
             }
-
-            return { selectedIds };
+            return value;
           },
-          false,
-          "selected/toggle",
-        ),
-
-      clear: () =>
-        set(
-          {
-            selectedIds: new Set(),
+          // Deserialize Array back to Set when loading from storage
+          reviver: (key, value) => {
+            if (value && typeof value === "object" && value.__type === "Set") {
+              return new Set(value.value);
+            }
+            return value;
           },
-          false,
-          "selected/clear",
-        ),
-    }),
+        }),
+      },
+    ),
     {
-      name: "selected-store",
+      name: "selected-store", // Name shown in Redux DevTools
       serialize: {
         options: {
-          // Instructs Redux DevTools to handle JS Set and Map data types
-          undefined: true,
-          function: false,
-          symbol: false,
-          map: true,
-          set: true,
+          set: true, // Enables Set inspection in Redux DevTools
         },
       },
     },
@@ -96,7 +106,7 @@ const users: User[] = [
   { id: 5, name: "David Brown" },
 ];
 
-export default function Two() {
+export default function Three() {
   const { selectedIds, add, remove, toggle, clear } = useSelectedStore();
 
   return (
@@ -199,4 +209,6 @@ export default function Two() {
   );
 }
 
-/** DESCRIPTION : Set */
+/** DESCRIPTION : Set
+ *   - devtools + persist (Session Storage) + immer
+ */

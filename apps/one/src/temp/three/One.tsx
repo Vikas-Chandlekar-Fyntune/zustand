@@ -86,6 +86,16 @@ const useUserStore = create<UserStore>()(
     }),
     {
       name: "user-store",
+      serialize: {
+        options: {
+          // Instructs Redux DevTools to handle JS Set and Map data types
+          undefined: true,
+          function: false,
+          symbol: false,
+          map: true,
+          set: true,
+        },
+      },
     },
   ),
 );

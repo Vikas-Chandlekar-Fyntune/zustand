@@ -3,15 +3,17 @@ import Two from "./two";
 import Three from "./three";
 import Four from "./four";
 import Five from "./five";
+import Six from "./six";
 
 const index = () => {
   return (
     <>
       {/* <One /> */}
       {/* <Two /> */}
-      {/* <Three /> */}
+      <Three />
       {/* <Four /> */}
-      <Five />
+      {/* <Five /> */}
+      {/* <Six /> */}
     </>
   );
 };
