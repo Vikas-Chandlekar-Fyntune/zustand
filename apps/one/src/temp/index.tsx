@@ -4,16 +4,18 @@ import Three from "./three";
 import Four from "./four";
 import Five from "./five";
 import Six from "./six";
+import Seven from "./seven";
 
 const index = () => {
   return (
     <>
       {/* <One /> */}
       {/* <Two /> */}
-      <Three />
+      {/* <Three /> */}
       {/* <Four /> */}
       {/* <Five /> */}
       {/* <Six /> */}
+      <Seven />
     </>
   );
 };
