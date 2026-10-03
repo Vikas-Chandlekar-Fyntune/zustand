@@ -234,7 +234,7 @@ function FoodMultiSelect() {
       {/* Main Trigger / Badge Input Box */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`min-h-[42px] w-full cursor-pointer rounded-lg border bg-white p-1.5 transition-all flex items-center justify-between gap-2 shadow-sm ${
+        className={`min-h-10.5 w-full cursor-pointer rounded-lg border bg-white p-1.5 transition-all flex items-center justify-between gap-2 shadow-sm ${
           isOpen
             ? "border-indigo-500 ring-2 ring-indigo-500/20"
             : "border-slate-200 hover:border-slate-300"
@@ -409,7 +409,7 @@ export default function App() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name..."
-              className="w-full h-[42px] rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 placeholder:text-slate-400"
+              className="w-full h-10.5 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 placeholder:text-slate-400"
             />
           </div>
           {/* Department Single Select */}
@@ -420,7 +420,7 @@ export default function App() {
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full h-[42px] rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-700"
+              className="w-full h-10.5 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-700"
             >
               <option value="">All Departments</option>
               <option value="Engineering">Engineering</option>
