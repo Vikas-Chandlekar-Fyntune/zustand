@@ -7,7 +7,6 @@ export interface IStudentState {
 }
 
 // features/students/student.store.ts
-
 import { create } from "zustand";
 import type { UrlFieldConfig } from "./shared/url-state/types";
 import { useUrlStateSync } from "./shared/url-state/use-url-state-sync";
@@ -155,7 +154,7 @@ const STUDENT_URL_CONFIG: UrlFieldConfig<IStudentState>[] = [
     queryKey: "food", // Parse handling both encoded (%2C) and unencoded (,) commas safely
 
     parse: (value) => {
-      if (!value) return []; // Decode URL entities (%2C -> ,)
+      if (!value) return [];
 
       const decodedValue = decodeURIComponent(value);
 
@@ -163,7 +162,7 @@ const STUDENT_URL_CONFIG: UrlFieldConfig<IStudentState>[] = [
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
-    }, // Serialize array to comma-separated string
+    },
 
     serialize: (value) => {
       if (!Array.isArray(value) || value.length === 0) {
@@ -370,8 +369,9 @@ export default function App() {
   useUrlStateSync({
     store: useStudentStore,
     config: STUDENT_URL_CONFIG,
-  }); // 2. Zustand State Selectors
+  });
 
+  // 2. Zustand State Selectors
   const search = useStudentStore((state) => state.search);
   const department = useStudentStore((state) => state.department);
   const setSearch = useStudentStore((state) => state.setSearch);
