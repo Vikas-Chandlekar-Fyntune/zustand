@@ -431,7 +431,155 @@ export default function App() {
           {/* Multi-Select Food Filter */}
           <FoodMultiSelect />
         </div>
+
+        <ExamPage />
       </div>
     </div>
   );
+}
+
+function ExamPage() {
+  const [blocked, setBlocked] = useState(false);
+
+  // useConfirmBack(blocked);
+  useConfirmBack(blocked, {
+    message: "Do you want to submit and exit?",
+    onConfirm: () => {
+      // your logic on OK, e.g. submit the exam
+      console.log("User confirmed");
+      // Back stays blocked, because blocked is still true
+    },
+  });
+
+  return (
+    <div>
+      {!blocked ? (
+        <button onClick={() => setBlocked(true)}>Start Exam</button>
+      ) : (
+        <>
+          <p>Back button is blocked.</p>
+          <button onClick={() => setBlocked(false)}>Submit</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+const BUFFER = 5; // number of dummy entries; raise it if users spam back
+
+// function useConfirmBack(
+//   enabled,
+//   message = "Are you sure you want to go back?",
+// ) {
+//   useEffect(() => {
+//     if (!enabled) return;
+
+//     // Mark the current (real) entry as index 0
+//     window.history.replaceState(
+//       { ...(window.history.state || {}), blockIdx: 0 },
+//       "",
+//       window.location.href,
+//     );
+
+//     // Push the buffer entries once (runs right after the user's click)
+//     for (let i = 1; i <= BUFFER; i++) {
+//       window.history.pushState({ blockIdx: i }, "", window.location.href);
+//     }
+
+//     const handlePopState = () => {
+//       const idx = window.history.state?.blockIdx;
+
+//       // Back at the top buffer entry (our own go() landed here): do nothing
+//       if (idx === BUFFER) return;
+
+//       // idx is undefined/0 when the user went back to (or past) the real entry
+//       const current = typeof idx === "number" ? idx : -1;
+
+//       if (window.confirm(message)) {
+//         window.removeEventListener("popstate", handlePopState);
+//         // Leave to the page before the real entry
+//         // (from index `current`, the real entry is `current` steps back, one more to leave)
+//         window.history.go(-(current + 1));
+//       } else {
+//         // Return to the top buffer entry, no new pushes
+//         window.history.go(BUFFER - Math.max(current, 0));
+//       }
+//     };
+
+//     window.addEventListener("popstate", handlePopState);
+//     return () => window.removeEventListener("popstate", handlePopState);
+//   }, [enabled, message]);
+// }
+
+// function useConfirmBack(enabled, message = "Are you sure you want to go back?") {
+//   const ignoreNext = useRef(false);
+
+//   useEffect(() => {
+//     if (!enabled) return;
+
+//     // Push the dummy entry ONCE (skip if it already exists, e.g. StrictMode)
+//     if (!window.history.state?.blockBack) {
+//       window.history.pushState({ blockBack: true }, "", window.location.href);
+//     }
+
+//     const handlePopState = () => {
+//       // Ignore the popstate caused by our own history.go(1)
+//       if (ignoreNext.current) {
+//         ignoreNext.current = false;
+//         return;
+//       }
+
+//       // The user is now on the ORIGINAL entry; the dummy is the forward entry
+//       if (window.confirm(message)) {
+//         window.removeEventListener("popstate", handlePopState);
+//         window.history.go(-1); // leave the page for real
+//       } else {
+//         ignoreNext.current = true;
+//         window.history.go(1); // return to the dummy entry, no new push
+//       }
+//     };
+
+//     window.addEventListener("popstate", handlePopState);
+//     return () => window.removeEventListener("popstate", handlePopState);
+//   }, [enabled, message]);
+// }
+
+function useConfirmBack(
+  enabled,
+  { message = "Are you sure?", onConfirm } = {},
+) {
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm; // always use the latest callback
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    window.history.replaceState(
+      { ...(window.history.state || {}), blockIdx: 0 },
+      "",
+      window.location.href,
+    );
+    for (let i = 1; i <= BUFFER; i++) {
+      window.history.pushState({ blockIdx: i }, "", window.location.href);
+    }
+
+    const handlePopState = () => {
+      const idx = window.history.state?.blockIdx;
+      if (idx === BUFFER) return; // our own go() landed on the top entry
+
+      const current = typeof idx === "number" ? idx : -1;
+
+      // 1. ALWAYS return to the top entry first (for both OK and Cancel)
+      window.history.go(BUFFER - current);
+
+      // 2. Ask every time
+      if (window.confirm(message)) {
+        // 3. OK: run your action, but do NOT remove the listener
+        onConfirmRef.current?.();
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [enabled, message]);
 }
