@@ -6,6 +6,7 @@ import Five from "./five";
 import Six from "./six";
 import Seven from "./seven";
 import Eight from "./eight";
+import Nine from "./nine/BasicExample";
 
 const index = () => {
   return (
@@ -17,7 +18,8 @@ const index = () => {
       {/* <Five /> */}
       {/* <Six /> */}
       {/* <Seven /> */}
-      <Eight />
+      {/* <Eight /> */}
+      <Nine />
     </>
   );
 };

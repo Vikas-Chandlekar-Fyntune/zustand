@@ -544,42 +544,27 @@ const BUFFER = 5; // number of dummy entries; raise it if users spam back
 //   }, [enabled, message]);
 // }
 
-function useConfirmBack(
-  enabled,
-  { message = "Are you sure?", onConfirm } = {},
-) {
+
+function useConfirmBack(enabled, { message = "Are you sure?", onConfirm } = {}) {
   const onConfirmRef = useRef(onConfirm);
-  onConfirmRef.current = onConfirm; // always use the latest callback
+  onConfirmRef.current = onConfirm;
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !("navigation" in window)) return;
 
-    window.history.replaceState(
-      { ...(window.history.state || {}), blockIdx: 0 },
-      "",
-      window.location.href,
-    );
-    for (let i = 1; i <= BUFFER; i++) {
-      window.history.pushState({ blockIdx: i }, "", window.location.href);
-    }
+    const onNavigate = (e) => {
+      // Back, Forward, and history.go(n) all arrive as "traverse"
+      if (e.navigationType !== "traverse") return;
+      if (!e.cancelable) return;
 
-    const handlePopState = () => {
-      const idx = window.history.state?.blockIdx;
-      if (idx === BUFFER) return; // our own go() landed on the top entry
-
-      const current = typeof idx === "number" ? idx : -1;
-
-      // 1. ALWAYS return to the top entry first (for both OK and Cancel)
-      window.history.go(BUFFER - current);
-
-      // 2. Ask every time
       if (window.confirm(message)) {
-        // 3. OK: run your action, but do NOT remove the listener
-        onConfirmRef.current?.();
+        onConfirmRef.current?.(); // proceed with the navigation
+      } else {
+        e.preventDefault();       // stay here; the stack is untouched
       }
     };
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    navigation.addEventListener("navigate", onNavigate);
+    return () => navigation.removeEventListener("navigate", onNavigate);
   }, [enabled, message]);
 }

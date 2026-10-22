@@ -1,0 +1,1 @@
+This folder have perfect working for back/forward button manually stop
