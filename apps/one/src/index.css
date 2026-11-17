@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+body.dom-protected {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.4;
+  transition: opacity 300ms ease;
+}

@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
 import { DomRemovalProvider, useDomRemoval } from "./context/DomRemovalContext";
 
+// WORKING
 export default function Four() {
   return (
     <DomRemovalProvider>
       <ProtectedContent />
+
+      <button
+        onClick={() => alert("ok")}
+        className="rounded-lg bg-green-600 px-5 py-2.5 font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        OK
+      </button>
     </DomRemovalProvider>
   );
 }

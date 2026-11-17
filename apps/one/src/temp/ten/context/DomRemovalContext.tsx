@@ -90,7 +90,7 @@ export function DomRemovalProvider({ children }: DomRemovalProviderProps) {
   useEffect(() => {
     const observer = new MutationObserver(scan);
 
-    observer.observe(document.documentElement, {
+    observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
